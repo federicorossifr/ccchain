@@ -1,10 +1,4 @@
-#include <openssl/sha.h>
-#include <openssl/evp.h>
-#include <openssl/crypto.h>
-#include <functional>
-#include <string>
-
-
+#include "hash.hpp"
 
 template <class T>
 class HashPointer {
@@ -16,7 +10,8 @@ public:
         ptr = nullptr;
     }
 
-    HashPointer(T* obj,std::function<bool(T* obj,std::string& hashDst)>& hashFun ): ptr(obj) {
+    template <class HashFunction>
+    HashPointer(T* obj,HashFunction hashFun ): ptr(obj) {
         hashFun(obj,hash);
     }
 
@@ -24,17 +19,22 @@ public:
 
     HashPointer(T* obj,std::string&& _hash): ptr(obj),hash(std::move(_hash)) {}
 
-    HashPointer& operator=(HashPointer&& hptr) {
+    HashPointer& operator=(HashPointer<T>&& hptr) {
         ptr = hptr.ptr;
         hash = std::move(hptr.hash);
         return *this;
     }
 
-    bool isTampered(std::function<bool(T* obj,std::string& hashDst)>& hashFun) {
+    template <class HashFunction>
+    bool isTampered(HashFunction hashFun) {
         std::string currHash;
         hashFun(ptr,currHash);
         auto tampered = CRYPTO_memcmp(hash.c_str(),currHash.c_str(),sizeof(hash));
         return tampered;
+    }
+
+    T& operator*() {
+        return *ptr;
     }
     
 };
